@@ -200,7 +200,7 @@ class ClientConnectionThread implements Runnable
                     break;
                 }
                 case "500 Internal Server Error": {
-                    FileInputStream dataFileReader = new FileInputStream("http/resources/forbidden.html");
+                    FileInputStream dataFileReader = new FileInputStream("http/resources/internalError.html");
 
                     byte[] byteArr = new byte[dataFileReader.available()];
                     dataFileReader.read(byteArr);
