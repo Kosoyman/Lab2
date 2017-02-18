@@ -5,12 +5,12 @@ import java.util.Date;
 import java.util.TimeZone;
 
 /**
- * Created by maxkr on 15-Feb-17.
+ * @author Maxim Kravchenko
+ * Created on 15-Feb-17, last modofied on 18-Feb-17.
  */
-public class HTTPResponseConstructor {
+class HTTPResponseConstructor {
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("EEE, d MMM, yyyy hh:mm:ss a z");
-    private final String serverDir = "C:\\Users\\maxkr\\IdeaProjects\\Lab2\\"; //directory that contains server files
     private String inputDir;
 
     HTTPResponseConstructor(String path){
@@ -18,12 +18,12 @@ public class HTTPResponseConstructor {
     }
 
     /* constructs and returns string http response based on status code */
-    public String setResponse(){
+    String setResponse(){
 
-        String code = DetermineStatusCode();
+        String code = GetStatusCode();
 
         if (code.equals("200 OK")) {
-            File f = new File (makePath(inputDir));
+            File f = new File (GetPath(inputDir));
             return "HTTP/1.1 " + code + '\n' +
                     "Date: " + getDate() + '\n' +
                     "Content-Type: text/html; charset=UTF-8\n" +
@@ -33,7 +33,7 @@ public class HTTPResponseConstructor {
                     "Server: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\n" +
                     "ETag: \"3f80f-1b6-3e1cb03b\"\n" +
                     "Accept-Ranges: bytes\n" +
-                    "Connection: close";
+                    "Connection: close\n\n";
         }
 
         else {
@@ -45,23 +45,22 @@ public class HTTPResponseConstructor {
                     "Server: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\n" +
                     "ETag: \"3f80f-1b6-3e1cb03b\"\n" +
                     "Accept-Ranges: bytes\n" +
-                    "Connection: close";
+                    "Connection: close\n\n";
         }
     }
 
     /* determines the status code by trying to access the specified file */
-    private String DetermineStatusCode(){
+    String GetStatusCode(){
         String ok = "200 OK",
                 forbidden = "403 Forbidden",
                 notFound = "404 Not Found",
                 serverErr = "500 Internal Server Error";
 
         try {
-            File file = new File(makePath(inputDir));
+            File file = new File(GetPath(inputDir));
             boolean exists = file.exists(),
-                    readable = file.canRead(),
-                    //checks if file is directory, I'm sure it's useful but not sure how to utilize it just yet
-                    isDirectory = file.isDirectory();
+                    readable = file.canRead();
+
             if (!exists)
                 return notFound;
 
@@ -74,6 +73,8 @@ public class HTTPResponseConstructor {
         }catch (SecurityException e){
             e.printStackTrace();
             return serverErr;
+        }catch(NullPointerException n){
+            return forbidden;
         }
     }
 
@@ -102,7 +103,7 @@ public class HTTPResponseConstructor {
     ensures correct merging of two parts, and correct format (e.g. slashes, no redundancy in the path),
     returns String representation for convenience
     */
-    private String makePath(String lastPiece){
-        return Paths.get(serverDir, lastPiece).normalize().toString();
+    String GetPath(String lastPiece){
+        return Paths.get("http/resources", lastPiece).normalize().toString();
     }
 }

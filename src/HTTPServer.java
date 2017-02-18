@@ -140,50 +140,24 @@ class ClientConnectionThread implements Runnable
         // Grab the first word in the HTTP-request which is the method
         String reqMeth = requestScanner.next();
 
-        String destinationFilePath;
-
-        // Atm GET is only supported
-        if (reqMeth.equals("GET"))
-        {
-            String fileRequested = requestScanner.next().substring(1);
-
-            // For this test, we only support index.html as a known file on the server
-            if (fileRequested.equals("index.html") || fileRequested.equals(""))
-            {
-                destinationFilePath = "http/resources/index.html";
-            }
-            else
-            {
-                destinationFilePath = "http/resources/fileNotFound.html";
-            }
-
-        }
-        else
-        {
-            destinationFilePath = "http/resources/fileNotFound.html";
-        }
-
-        String response = "";
+        String destinationFilePath = null;
 
         /*
-        Form a response of a standard-header and the specific HTML-file
-         */
+        Atm GET is only supported
+        if the request is not GET, it will be handled in SetResponse method
+        */
+        if (reqMeth.equals("GET"))
+        {
+            //now only takes the name of the file
+            destinationFilePath = requestScanner.next().substring(1);
+        }
+
         HTTPResponseConstructor rc = new HTTPResponseConstructor(destinationFilePath);
-        response = rc.setResponse();
-        /*FileInputStream headerReader = new FileInputStream(new File("http/resources/standardHeader.txt"));
-        byte[] byteArr = new byte[headerReader.available()];
-        headerReader.read(byteArr);
 
-        response += new String(byteArr, "UTF-8"); */
+        //converts the name of the file to the full path to the file
+        destinationFilePath = rc.GetPath(destinationFilePath);
 
-
-        FileInputStream dataFileReader = new FileInputStream(destinationFilePath);
-
-        byte[] byteArr = new byte[dataFileReader.available()];
-        dataFileReader.read(byteArr);
-
-        response += new String(byteArr, "UTF-8");
-
+        String response = setResponse(rc.setResponse(), rc.GetStatusCode(), destinationFilePath);
         // For debugging purposes
         System.out.println(response);
 
@@ -191,6 +165,59 @@ class ClientConnectionThread implements Runnable
 
     }
 
+    /*
+    Form a response of a standard-header and the specific HTML-file
+    */
+    private String setResponse(String header, String status, String destinationFilePath){
+        String response = header;
+        try {
+            switch (status) {
+                case "200 OK": {
+                    FileInputStream dataFileReader = new FileInputStream(destinationFilePath);
+
+                    byte[] byteArr = new byte[dataFileReader.available()];
+                    dataFileReader.read(byteArr);
+
+                    response += new String(byteArr, "UTF-8");
+                    break;
+                }
+                case "404 Not Found": {
+                    FileInputStream dataFileReader = new FileInputStream("http/resources/fileNotFound.html");
+
+                    byte[] byteArr = new byte[dataFileReader.available()];
+                    dataFileReader.read(byteArr);
+
+                    response += new String(byteArr, "UTF-8");
+                    break;
+                }
+                case "403 Forbidden": {
+                    FileInputStream dataFileReader = new FileInputStream("http/resources/forbidden.html");
+
+                    byte[] byteArr = new byte[dataFileReader.available()];
+                    dataFileReader.read(byteArr);
+
+                    response += new String(byteArr, "UTF-8");
+                    break;
+                }
+                case "500 Internal Server Error": {
+                    FileInputStream dataFileReader = new FileInputStream("http/resources/forbidden.html");
+
+                    byte[] byteArr = new byte[dataFileReader.available()];
+                    dataFileReader.read(byteArr);
+
+                    response += new String(byteArr, "UTF-8");
+                    break;
+                }
+            }
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return response;
+    }
 }
 
 
