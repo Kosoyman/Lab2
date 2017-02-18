@@ -168,17 +168,18 @@ class ClientConnectionThread implements Runnable
         /*
         Form a response of a standard-header and the specific HTML-file
          */
-
-        FileInputStream headerReader = new FileInputStream(new File("http/resources/standardHeader.txt"));
+        HTTPResponseConstructor rc = new HTTPResponseConstructor(destinationFilePath);
+        response = rc.setResponse();
+        /*FileInputStream headerReader = new FileInputStream(new File("http/resources/standardHeader.txt"));
         byte[] byteArr = new byte[headerReader.available()];
         headerReader.read(byteArr);
 
-        response += new String(byteArr, "UTF-8");
+        response += new String(byteArr, "UTF-8"); */
 
 
         FileInputStream dataFileReader = new FileInputStream(destinationFilePath);
 
-        byteArr = new byte[dataFileReader.available()];
+        byte[] byteArr = new byte[dataFileReader.available()];
         dataFileReader.read(byteArr);
 
         response += new String(byteArr, "UTF-8");

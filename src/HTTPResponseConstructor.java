@@ -10,8 +10,8 @@ import java.util.TimeZone;
 public class HTTPResponseConstructor {
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("EEE, d MMM, yyyy hh:mm:ss a z");
-    private final String serverDir = null; //directory that contains server files
-    private String inputDir = null;
+    private final String serverDir = "C:\\Users\\maxkr\\IdeaProjects\\Lab2\\"; //directory that contains server files
+    private String inputDir;
 
     HTTPResponseConstructor(String path){
         inputDir = path;
@@ -26,19 +26,25 @@ public class HTTPResponseConstructor {
             File f = new File (makePath(inputDir));
             return "HTTP/1.1 " + code + '\n' +
                     "Date: " + getDate() + '\n' +
-                    "Status-Encoding: UTF-8\n" +
+                    "Content-Type: text/html; charset=UTF-8\n" +
+                    "Content-Encoding: UTF-8\n" +
                     "Content-Length: " + getContentLength(f) + '\n' +
                     "Last-Modified: " + getLastModified(f) + '\n' +
-                    "Server: home-made diamond\n" +
+                    "Server: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\n" +
+                    "ETag: \"3f80f-1b6-3e1cb03b\"\n" +
+                    "Accept-Ranges: bytes\n" +
                     "Connection: close";
         }
 
         else {
             //TODO: make sure that this counts as a proper "negative" response, we might need to add more info in the header
-            return  "HTTP/1.1 " + code + '\n' +
+            return "HTTP/1.1 " + code + '\n' +
                     "Date: " + getDate() + '\n' +
-                    "Status-Encoding: UTF-8\n" +
-                    "Server: home-made diamond\n" +
+                    "Content-Type: text/html; charset=UTF-8\n" +
+                    "Content-Encoding: UTF-8\n" +
+                    "Server: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\n" +
+                    "ETag: \"3f80f-1b6-3e1cb03b\"\n" +
+                    "Accept-Ranges: bytes\n" +
                     "Connection: close";
         }
     }
