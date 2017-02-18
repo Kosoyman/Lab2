@@ -14,6 +14,8 @@ class HTTPResponseConstructor {
     private String inputDir;
 
     HTTPResponseConstructor(String path){
+        if (path.equals("") || path.equals("index.htm"))
+            path = "index.html";
         inputDir = path;
     }
 
@@ -23,7 +25,7 @@ class HTTPResponseConstructor {
         String code = GetStatusCode();
 
         if (code.equals("200 OK")) {
-            File f = new File (GetPath(inputDir));
+            File f = new File (GetPath());
             return "HTTP/1.1 " + code + '\n' +
                     "Date: " + getDate() + '\n' +
                     "Content-Type: text/html; charset=UTF-8\n" +
@@ -57,7 +59,7 @@ class HTTPResponseConstructor {
                 serverErr = "500 Internal Server Error";
 
         try {
-            File file = new File(GetPath(inputDir));
+            File file = new File(GetPath());
             boolean exists = file.exists(),
                     readable = file.canRead();
 
@@ -103,7 +105,7 @@ class HTTPResponseConstructor {
     ensures correct merging of two parts, and correct format (e.g. slashes, no redundancy in the path),
     returns String representation for convenience
     */
-    String GetPath(String lastPiece){
-        return Paths.get("http/resources", lastPiece).normalize().toString();
+    String GetPath(){
+        return Paths.get("http/resources", inputDir).normalize().toString();
     }
 }

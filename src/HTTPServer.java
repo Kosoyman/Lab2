@@ -155,7 +155,7 @@ class ClientConnectionThread implements Runnable
         HTTPResponseConstructor rc = new HTTPResponseConstructor(destinationFilePath);
 
         //converts the name of the file to the full path to the file
-        destinationFilePath = rc.GetPath(destinationFilePath);
+        destinationFilePath = rc.GetPath();
 
         String response = setResponse(rc.setResponse(), rc.GetStatusCode(), destinationFilePath);
         // For debugging purposes
