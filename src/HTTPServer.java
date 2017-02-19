@@ -152,13 +152,41 @@ class ClientConnectionThread implements Runnable
             destinationFilePath = requestScanner.next().substring(1);
         }
 
-        HTTPResponseConstructor rc = new HTTPResponseConstructor(destinationFilePath);
 
-        String response = setResponse(rc.setResponse(), rc.GetStatusCode(), rc.GetPath());
-        // For debugging purposes
-        System.out.println(response);
+        /*
+          Test-code below. Atm we are bypassing all the regular functionality and the following data are sent to the
+          client regardless of request. Original
+         */
+
+        FileInputStream dataFileReader = new FileInputStream("http/resources/dir2/boston.png");
+
+        String response = "HTTP/1.1 200 OK " +
+                "\nDate: Sun, 19 Feb, 2017 08:20:05 PM GMT " +
+                "\nContent-Type: image/png " +
+                "\nContent-Encoding: UTF-8 "+
+                "\nContent-Length: " + dataFileReader.available() +
+                "\nLast-Modified: Sun, 19 Feb, 2017 08:14:17 PM GMT " +
+                "\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux) " +
+                "\nETag: \"3f80f-1b6-3e1cb03b\" " +
+                "\nAccept-Ranges: bytes " +
+                "\nConnection: close\n\n";
+
+        byte[] byteArr = new byte[dataFileReader.available()];
+        dataFileReader.read(byteArr);
 
         out.write(response.getBytes());
+        out.write(byteArr);
+
+
+        /*
+        Original code below. Delete test-code above and uncomment code below and we are back to how it was before
+         */
+
+        //HTTPResponseConstructor rc = new HTTPResponseConstructor(destinationFilePath);
+
+        //String response = setResponse(rc.setResponse(), rc.GetStatusCode(), rc.GetPath());
+        // For debugging purposes
+        //System.out.println(response);
 
     }
 
