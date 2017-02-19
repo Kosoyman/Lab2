@@ -11,7 +11,7 @@ public class HTTPServer
 {
     public static final int BUFSIZE = 1024;
     public static final int MYPORT = 8888;
-    public static final int MS_PER_SECOND = 1000;
+    public static final int MS_PER_SECOND = 2000;
     public static final int CONNECTION_TIME_OUT = 2 * MS_PER_SECOND; // Connection timeout in ms
 
     public static void main(String[] args) {
@@ -154,10 +154,7 @@ class ClientConnectionThread implements Runnable
 
         HTTPResponseConstructor rc = new HTTPResponseConstructor(destinationFilePath);
 
-        //converts the name of the file to the full path to the file
-        destinationFilePath = rc.GetPath();
-
-        String response = setResponse(rc.setResponse(), rc.GetStatusCode(), destinationFilePath);
+        String response = setResponse(rc.setResponse(), rc.GetStatusCode(), rc.GetPath());
         // For debugging purposes
         System.out.println(response);
 
@@ -182,7 +179,7 @@ class ClientConnectionThread implements Runnable
                     break;
                 }
                 case "404 Not Found": {
-                    FileInputStream dataFileReader = new FileInputStream("http/resources/fileNotFound.html");
+                    FileInputStream dataFileReader = new FileInputStream("http/resources/ErrorPages/fileNotFound.html");
 
                     byte[] byteArr = new byte[dataFileReader.available()];
                     dataFileReader.read(byteArr);
@@ -191,7 +188,7 @@ class ClientConnectionThread implements Runnable
                     break;
                 }
                 case "403 Forbidden": {
-                    FileInputStream dataFileReader = new FileInputStream("http/resources/forbidden.html");
+                    FileInputStream dataFileReader = new FileInputStream("http/resources/ErrorPages/forbidden.html");
 
                     byte[] byteArr = new byte[dataFileReader.available()];
                     dataFileReader.read(byteArr);
@@ -200,7 +197,7 @@ class ClientConnectionThread implements Runnable
                     break;
                 }
                 case "500 Internal Server Error": {
-                    FileInputStream dataFileReader = new FileInputStream("http/resources/internalError.html");
+                    FileInputStream dataFileReader = new FileInputStream("http/resources/ErrorPages/internalError.html");
 
                     byte[] byteArr = new byte[dataFileReader.available()];
                     dataFileReader.read(byteArr);
