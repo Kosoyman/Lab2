@@ -147,90 +147,53 @@ class ClientConnectionThread implements Runnable
         if the request is not GET, it will be handled in SetResponse method
         */
         if (reqMeth.equals("GET"))
-        {
-            //now only takes the name of the file
             destinationFilePath = requestScanner.next().substring(1);
-        }
 
 
-        /*
-          Test-code below. Atm we are bypassing all the regular functionality and the following data are sent to the
-          client regardless of request. Original
-         */
-
-        FileInputStream dataFileReader = new FileInputStream("http/resources/dir2/boston.png");
-
-        String response = "HTTP/1.1 200 OK " +
-                "\nDate: Sun, 19 Feb, 2017 08:20:05 PM GMT " +
-                "\nContent-Type: image/png " +
-                "\nContent-Encoding: UTF-8 "+
-                "\nContent-Length: " + dataFileReader.available() +
-                "\nLast-Modified: Sun, 19 Feb, 2017 08:14:17 PM GMT " +
-                "\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux) " +
-                "\nETag: \"3f80f-1b6-3e1cb03b\" " +
-                "\nAccept-Ranges: bytes " +
-                "\nConnection: close\n\n";
-
-        byte[] byteArr = new byte[dataFileReader.available()];
-        dataFileReader.read(byteArr);
-
-        out.write(response.getBytes());
-        out.write(byteArr);
-
-
-        /*
-        Original code below. Delete test-code above and uncomment code below and we are back to how it was before
-         */
-
-        //HTTPResponseConstructor rc = new HTTPResponseConstructor(destinationFilePath);
-
-        //String response = setResponse(rc.setResponse(), rc.GetStatusCode(), rc.GetPath());
-        // For debugging purposes
-        //System.out.println(response);
-
+        HTTPResponseConstructor rc = new HTTPResponseConstructor(destinationFilePath);
+        String header = rc.getHeader();
+        byte[] response = setResponse(rc.getStatusCode(), rc.getPath());
+        out.write(header.getBytes());
+        out.write(response);
     }
 
     /*
     Form a response of a standard-header and the specific HTML-file
     */
-    private String setResponse(String header, String status, String destinationFilePath){
-        String response = header;
+    private byte[] setResponse(String status, String destinationFilePath){
+        byte[] byteArr = null;
         try {
             switch (status) {
                 case "200 OK": {
                     FileInputStream dataFileReader = new FileInputStream(destinationFilePath);
 
-                    byte[] byteArr = new byte[dataFileReader.available()];
+                    byteArr = new byte[dataFileReader.available()];
                     dataFileReader.read(byteArr);
 
-                    response += new String(byteArr, "UTF-8");
                     break;
                 }
                 case "404 Not Found": {
                     FileInputStream dataFileReader = new FileInputStream("http/resources/ErrorPages/fileNotFound.html");
 
-                    byte[] byteArr = new byte[dataFileReader.available()];
+                    byteArr = new byte[dataFileReader.available()];
                     dataFileReader.read(byteArr);
 
-                    response += new String(byteArr, "UTF-8");
                     break;
                 }
                 case "403 Forbidden": {
                     FileInputStream dataFileReader = new FileInputStream("http/resources/ErrorPages/forbidden.html");
 
-                    byte[] byteArr = new byte[dataFileReader.available()];
+                    byteArr = new byte[dataFileReader.available()];
                     dataFileReader.read(byteArr);
 
-                    response += new String(byteArr, "UTF-8");
                     break;
                 }
                 case "500 Internal Server Error": {
                     FileInputStream dataFileReader = new FileInputStream("http/resources/ErrorPages/internalError.html");
 
-                    byte[] byteArr = new byte[dataFileReader.available()];
+                    byteArr = new byte[dataFileReader.available()];
                     dataFileReader.read(byteArr);
 
-                    response += new String(byteArr, "UTF-8");
                     break;
                 }
             }
@@ -241,7 +204,7 @@ class ClientConnectionThread implements Runnable
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return response;
+        return byteArr;
     }
 }
 

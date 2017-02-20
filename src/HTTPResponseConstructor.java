@@ -12,22 +12,26 @@ class HTTPResponseConstructor {
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("EEE, d MMM, yyyy hh:mm:ss a z");
     private String inputDir;
+    private String header;
+    private String statusCode;
+    private String pathName;
 
     HTTPResponseConstructor(String path) {
         inputDir = path;
+        setPath();
+        setStatusCode();
+        setHeader();
     }
 
     /* constructs and returns string http response based on status code */
-    String setResponse() {
+    private void setHeader() {
 
-        String code = GetStatusCode();
-
-        if (code.equals("200 OK")) {
-            File f = new File(GetPath());
-            return "HTTP/1.1 " + code + '\n' +
+        if (statusCode.equals("200 OK")) {
+            File f = new File(getPath());
+            header = "HTTP/1.1 " + statusCode + '\n' +
                     "Date: " + getDate() + '\n' +
-                    "Content-Type: " + GetExtension() +'\n' +
-                    "Content-Encoding: UTF-8\n" +
+                    "Content-Type: " + getExtension() +'\n' +
+                    //"Content-Encoding: UTF-8\n" +
                     "Content-Length: " + getContentLength(f) + '\n' +
                     "Last-Modified: " + getLastModified(f) + '\n' +
                     "Server: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\n" +
@@ -35,7 +39,7 @@ class HTTPResponseConstructor {
                     "Accept-Ranges: bytes\n" +
                     "Connection: close\n\n";
         } else {
-            return "HTTP/1.1 " + code + '\n' +
+            header = "HTTP/1.1 " + statusCode + '\n' +
                     "Date: " + getDate() + '\n' +
                     "Content-Type: text/html; charset=UTF-8\n" +
                     "Content-Encoding: UTF-8\n" +
@@ -46,48 +50,60 @@ class HTTPResponseConstructor {
         }
     }
 
+    /* returns the header */
+    String getHeader(){
+        return header;
+    }
+
     /* determines the status code by trying to access the specified file */
-    String GetStatusCode() {
+    private void setStatusCode() {
         String ok = "200 OK",
                 forbidden = "403 Forbidden",
                 notFound = "404 Not Found",
                 serverErr = "500 Internal Server Error";
 
         try {
-            File file = new File(GetPath());
+            File file = new File(getPath());
             boolean exists = file.exists(),
                     readable = file.canRead(),
                     isDirectory = file.isDirectory();
 
             if (!exists)
-                return notFound;
+                statusCode = notFound;
 
             else if (!readable)
-                return forbidden;
+                statusCode = forbidden;
 
             else if (isDirectory) {
                 //if the file is a directory, check if it contains index html or htm, otherwise return 404 Not Found
-                if (new File(GetPath(), "index.html").exists()) {
+                if (new File(getPath(), "index.html").exists()) {
                     inputDir = inputDir + "/index.html";
-                    return GetStatusCode();
+                    setPath();
+                    setStatusCode();
 
-                } else if (new File(GetPath(), "index.htm").exists()) {
+                } else if (new File(getPath(), "index.htm").exists()) {
                     inputDir = inputDir + "/index.htm";
-                    return GetStatusCode();
+                    setPath();
+                    setStatusCode();
                 }
-
-                return notFound;
+                else
+                    statusCode = notFound;
 
             } else
-                return ok;
+                statusCode = ok;
 
         } catch (SecurityException e) {
             e.printStackTrace();
-            return serverErr;
+            statusCode = serverErr;
 
         } catch (NullPointerException n) {
-            return forbidden;
+            statusCode = forbidden;
         }
+    }
+
+    /* returns status code */
+    String getStatusCode() {
+        return statusCode;
     }
 
     /*
@@ -115,15 +131,20 @@ class HTTPResponseConstructor {
     ensures correct merging of two parts, and correct format (e.g. slashes, no redundancy in the path),
     returns String representation for convenience
     */
-    String GetPath() {
-        return Paths.get("http/resources", inputDir).normalize().toString();
+    private void setPath() {
+        pathName = Paths.get("http/resources", inputDir).normalize().toString();
+    }
+
+    /* returns path name */
+    String getPath(){
+        return pathName;
     }
 
     /*
     gets extension of the file that is requested, right now only determines if a file is png image, otherwise
     returns text/html
     */
-    private String GetExtension() {
+    private String getExtension() {
 
         String extension = inputDir.substring(inputDir.lastIndexOf(".") + 1, inputDir.length());
 
