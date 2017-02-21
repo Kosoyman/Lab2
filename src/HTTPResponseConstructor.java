@@ -65,14 +65,14 @@ class HTTPResponseConstructor {
         try {
             File file = new File(getPath());
             boolean exists = file.exists(),
-                    readable = file.canRead(),
+                    hidden = isHidden(),
                     isDirectory = file.isDirectory();
 
-            if (!exists)
-                statusCode = notFound;
-
-            else if (!readable)
+            if (hidden)
                 statusCode = forbidden;
+
+            else if (!exists)
+                statusCode = notFound;
 
             else if (isDirectory) {
                 //if the file is a directory, check if it contains index html or htm, otherwise return 404 Not Found
@@ -108,7 +108,6 @@ class HTTPResponseConstructor {
 
     /*
     returns String representation of current date with format specified in the fields
-    TODO: right now returns one hour smaller than current time, fix if time allows
     */
     private String getDate() {
         final Date currentTime = new Date();
@@ -153,5 +152,10 @@ class HTTPResponseConstructor {
 
         else
             return "text/html; charset=UTF-8";
+    }
+
+    /* checks if the client is trying to access the "secret" directory */
+    private boolean isHidden(){
+        return inputDir.contains("secretDir");
     }
 }
