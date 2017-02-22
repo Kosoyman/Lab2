@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.Scanner;
 
 /**
@@ -78,19 +79,27 @@ class ClientConnectionThread implements Runnable
                 // Read input-stream and store it in temporary buffer
                 byte[] buf = new byte[buffSize];
 
-                in.read(buf);
+                int readBytes = in.read(buf);
+
+                // In case we don't fill the the whole buffer, we want to remove zeroes.
+                if (readBytes < buffSize)
+                {
+                    buf = Arrays.copyOf(buf, readBytes);
+                }
+
                 temp.write(buf);
             }
 
             System.out.printf("HTTP request from %s using port %d \n", clientSocket.getInetAddress(), clientSocket.getPort());
 
             // For debugging purposes
-            System.out.println(new String(temp.toByteArray(), "UTF-8"));
+            //System.out.println(new String(temp.toByteArray(), "UTF-8"));
 
-            String request = new String(temp.toByteArray(), "UTF-8").trim();
+            //String request = new String(temp.toByteArray(), "UTF-8").trim();
 
 
-            processRequest(request.getBytes(), out);
+            //processRequest(request.getBytes(), out);
+            processRequest(temp.toByteArray(), out);
 
             System.out.printf("Closing connection for %s on port %d \n", clientSocket.getInetAddress(), clientSocket.getPort());
             this.clientSocket.close();
@@ -124,6 +133,13 @@ class ClientConnectionThread implements Runnable
         if (reqMeth.equals("GET"))
             destinationFilePath = requestScanner.next().substring(1);
 
+        else if (reqMeth.equals("POST"))
+        {
+            // currently bypasses the response, closes connection after image has been uploaded.
+            uploadImage(req);
+            return;
+        }
+
 
         HTTPResponseConstructor rc = new HTTPResponseConstructor(destinationFilePath);
         String header = rc.getHeader();
@@ -131,6 +147,142 @@ class ClientConnectionThread implements Runnable
         out.write(header.getBytes());
         out.write(response);
     }
+
+    /**
+     * Test-method to extract image (png) binary data from a POST-request and store it as a file
+     * @param req byte-array containing full request from client
+     * @throws IOException
+     */
+    private void uploadImage(byte[] req) throws IOException {
+
+
+        // Make string-version of request, used to extract some data
+        String request = new String(req, "UTF-8");
+
+        String filename ="";
+        String contentsLength ="";
+        String boundaryNumber = "";
+
+        Scanner lineScanner = new Scanner(request);
+
+        // Find boundary number
+        while(boundaryNumber.equals(""))
+        {
+            String currentRow = lineScanner.nextLine();
+            if(currentRow.contains("boundary=---------------------------"))
+            {
+                boundaryNumber = currentRow.replace("Content-Type: multipart/form-data; boundary=---------------------------", "");
+            }
+        }
+
+        // Find contents length
+        while(contentsLength.equals(""))
+        {
+            String currentRow = lineScanner.nextLine();
+            if(currentRow.contains("Content-Length:"))
+            {
+                contentsLength = currentRow.split(" ")[1];
+            }
+        }
+
+        // Find name of file
+        while(filename.equals(""))
+        {
+            String currentRow = lineScanner.nextLine();
+            if(currentRow.contains("filename="))
+            {
+                String unCleanFilename = currentRow.split(" ")[3];
+                filename = unCleanFilename.substring(unCleanFilename.indexOf("\"") + 1, unCleanFilename.lastIndexOf("\""));
+            }
+        }
+
+        // Debugging purposes
+        System.out.println("The filename is: " + filename);
+        System.out.println("Contents-length is: " + Integer.parseInt(contentsLength));
+        System.out.println("Boundary-number is: " + boundaryNumber);
+
+        // Find the last part of the header
+        int byteCountLastPartHeader = 0;
+        int lastPieceHeaderLength = 9;
+
+        boolean found = false;
+
+        while (!found)
+        {
+            byte[] currentBytePiece = Arrays.copyOfRange(req, byteCountLastPartHeader, byteCountLastPartHeader + lastPieceHeaderLength);
+            if (new String(currentBytePiece, "UTF-8").equals("image/png"))
+            {
+                found = true;
+            }
+            else
+            {
+                byteCountLastPartHeader++;
+            }
+        }
+
+        // This string marks the end of binary data
+        String endBinaryMarker = "-----------------------------" + boundaryNumber + "--";
+
+        found = false;
+
+        // Find the first byte of the end of binary data marker
+        int endBinaryMarkByteCount = 0;
+        int endBinaryLinesize = endBinaryMarker.length();
+
+        while (!found)
+        {
+            byte[] currentBytePiece = Arrays.copyOfRange(req, endBinaryMarkByteCount, endBinaryMarkByteCount + endBinaryLinesize);
+            if (new String(currentBytePiece, "UTF-8").equals(endBinaryMarker))
+            {
+                found = true;
+            }
+            else
+            {
+                endBinaryMarkByteCount++;
+            }
+
+        }
+
+        // 8 is for the mage/png characters, 4 is for the CRLF on two rows
+        int lastByteOfHeader = byteCountLastPartHeader + 8 + 4;
+
+        int beginningOfImageDataByte = lastByteOfHeader + 1;
+
+        // Extract image data. -2 because we want to remove the last newline (CRLF)
+        byte[] imageData = Arrays.copyOfRange(req, beginningOfImageDataByte, endBinaryMarkByteCount - 2);
+
+        // For debugging purposes
+        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte]);
+        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte + 1]);
+        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte + 2]);
+        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte + 3]);
+        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte + 4]);
+        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte + 5]);
+        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte + 6]);
+
+        System.out.println("Last byte: " + imageData[imageData.length -1]);
+        System.out.println("Last byte: " + imageData[imageData.length -2]);
+        System.out.println("Last byte: " + imageData[imageData.length -3]);
+        System.out.println("Last byte: " + imageData[imageData.length -4]);
+        System.out.println("Last byte: " + imageData[imageData.length -5]);
+        System.out.println("Last byte: " + imageData[imageData.length -6]);
+        System.out.println("Last byte: " + imageData[imageData.length -7]);
+        System.out.println("Last byte: " + imageData[imageData.length -8]);
+        System.out.println("Last byte: " + imageData[imageData.length -9]);
+        System.out.println("Last byte: " + imageData[imageData.length -10]);
+        System.out.println("Last byte: " + imageData[imageData.length -11]);
+        System.out.println("Last byte: " + imageData[imageData.length -12]);
+
+        System.out.println("Total number of bytes: " + (req.length - beginningOfImageDataByte));
+
+        //System.out.println("IMAGE DATA BELOW");
+        //System.out.println(new String(imageData, "UTF-8"));
+
+        FileOutputStream file = new FileOutputStream("http/resources/dir1/" + filename);
+        file.write(imageData);
+        file.close();
+    }
+
 
     /*
     Form a response of a standard-header and the specific HTML-file
