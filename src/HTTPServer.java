@@ -11,8 +11,6 @@ public class HTTPServer
 {
     public static final int BUFSIZE = 1024;
     public static final int MYPORT = 8888;
-    public static final int MS_PER_SECOND = 2000;
-    public static final int CONNECTION_TIME_OUT = 2 * MS_PER_SECOND; // Connection timeout in ms
 
     public static void main(String[] args) {
 
@@ -31,7 +29,7 @@ public class HTTPServer
                 Socket clientSocket = socket.accept();
 
                 // Create a new thread for handling the connection
-                Thread clientConnection = new Thread(new ClientConnectionThread(clientSocket, BUFSIZE, CONNECTION_TIME_OUT));
+                Thread clientConnection = new Thread(new ClientConnectionThread(clientSocket, BUFSIZE));
                 clientConnection.start();
             }
         }
@@ -53,11 +51,10 @@ class ClientConnectionThread implements Runnable
     private int buffSize;
     private int connectionTimeOut;
 
-    public ClientConnectionThread(Socket socket, int buffSize, int connectionTimeOut)
+    public ClientConnectionThread(Socket socket, int buffSize)
     {
         this.clientSocket = socket;
         this.buffSize = buffSize;
-        this.connectionTimeOut = connectionTimeOut;
     }
 
     @Override
@@ -69,53 +66,31 @@ class ClientConnectionThread implements Runnable
             InputStream in = clientSocket.getInputStream();
             OutputStream out = clientSocket.getOutputStream();
 
-            boolean done = false;
+            // Used as a temporary storage when receiving data
+            ByteArrayOutputStream temp = new ByteArrayOutputStream();
 
-            // Will automatically close connection after a time-out period
-            while (!done)
+            // Wait for a message
+            while(in.available() == 0);
+
+            // Keep reading from input-stream as long as we have bytes to process.
+            while (in.available() != 0)
             {
-                // Start clock
-                long start = System.currentTimeMillis();
+                // Read input-stream and store it in temporary buffer
+                byte[] buf = new byte[buffSize];
 
-                // Used as a temporary storage when receiving data
-                ByteArrayOutputStream temp = new ByteArrayOutputStream();
-
-                // Wait for a message or until time out (client has probably closed connection)
-                while(in.available() == 0 && (System.currentTimeMillis() - start) < this.connectionTimeOut );
-
-                // Check if we received data or timed out
-                if (in.available() != 0)
-                {
-                    // Keep reading from input-stream as long as we have bytes to process.
-                    while (in.available() != 0)
-                    {
-                        // Read input-stream and store it in temporary buffer
-                        byte[] buf = new byte[buffSize];
-
-                        in.read(buf);
-                        temp.write(buf);
-                    }
-
-                    System.out.printf("HTTP request from %s using port %d \n", clientSocket.getInetAddress(), clientSocket.getPort());
-
-                    // For debugging purposes
-                    System.out.println(new String(temp.toByteArray(), "UTF-8"));
-
-                    String request = new String(temp.toByteArray(), "UTF-8").trim();
-
-                    /*
-                       Half dirty test below to test to send back a web-page to the client.
-                       Header currently static, copied from Wikipedias homepage
-                     */
-
-                    processRequest(request.getBytes(), out);
-
-                }
-                else
-                {
-                    done = true;
-                }
+                in.read(buf);
+                temp.write(buf);
             }
+
+            System.out.printf("HTTP request from %s using port %d \n", clientSocket.getInetAddress(), clientSocket.getPort());
+
+            // For debugging purposes
+            System.out.println(new String(temp.toByteArray(), "UTF-8"));
+
+            String request = new String(temp.toByteArray(), "UTF-8").trim();
+
+
+            processRequest(request.getBytes(), out);
 
             System.out.printf("Closing connection for %s on port %d \n", clientSocket.getInetAddress(), clientSocket.getPort());
             this.clientSocket.close();
