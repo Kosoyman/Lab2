@@ -92,7 +92,7 @@ class ClientConnectionThread implements Runnable
             System.out.printf("HTTP request from %s using port %d \n", clientSocket.getInetAddress(), clientSocket.getPort());
 
             // For debugging purposes
-            //System.out.println(new String(temp.toByteArray(), "UTF-8"));
+            System.out.println(new String(temp.toByteArray(), "UTF-8"));
 
             //String request = new String(temp.toByteArray(), "UTF-8").trim();
 
@@ -123,19 +123,29 @@ class ClientConnectionThread implements Runnable
         // Grab the first word in the HTTP-request which is the method
         String reqMeth = requestScanner.next();
 
-        String destinationFilePath = null;
-
+        String destinationFilePath;
+        HTTPResponseConstructor rc;
         /*
         if the request is not GET, PUT, or POST, it will be handled in SetResponse method
         */
         switch (reqMeth) {
             case "GET":
                 destinationFilePath = requestScanner.next().substring(1);
+                rc = new HTTPResponseConstructor(destinationFilePath);
+                rc.setPath();
+                rc.setExtension();
+                rc.setStatusCode();
+                rc.setHeader();
                 break;
 
             case "POST":
                 uploadImage(req, null);
-                destinationFilePath = "uploads/successful.html";
+                destinationFilePath = "uploads/ErrorPages/201.html";
+                rc = new HTTPResponseConstructor(destinationFilePath);
+                rc.setPath();
+                rc.setExtension();
+                rc.forceStatusCode("201 Created");
+                rc.setHeader();
                 break;
 
             case "PUT":
@@ -143,20 +153,52 @@ class ClientConnectionThread implements Runnable
 
                 if(!destinationFilePath.contains("secretDir")) {
                     uploadImage(req, destinationFilePath);
-                    destinationFilePath = "uploads/successful.html";
+                    destinationFilePath = "uploads/ErrorPages/201.html";
+                    rc = new HTTPResponseConstructor(destinationFilePath);
+                    rc.setPath();
+                    rc.setExtension();
+                    rc.forceStatusCode("201 Created");
+                    rc.setHeader();
                 }
 
-                else
+                else {
                     destinationFilePath = "secretDir";
-
+                    rc = new HTTPResponseConstructor(destinationFilePath);
+                    rc.setPath();
+                    rc.setExtension();
+                    rc.forceStatusCode("201 Created");
+                    rc.setHeader();
+                }
                 break;
+
+            case "HEAD":
+            case "DELETE":
+            case "OPTIONS":
+            case "CONNECT":
+                destinationFilePath = "http/resources/ErrorPages/501.html";
+                rc = new HTTPResponseConstructor(destinationFilePath);
+                rc.setPath();
+                rc.setExtension();
+                rc.forceStatusCode("501 Not Implemented");
+                rc.setHeader();
+                break;
+
+            default:
+                destinationFilePath = "http/resources/ErrorPages/400.html";
+                rc = new HTTPResponseConstructor(destinationFilePath);
+                rc.setPath();
+                rc.setExtension();
+                rc.forceStatusCode("400 Bad Request");
+                rc.setHeader();
         }
 
-        HTTPResponseConstructor rc = new HTTPResponseConstructor(destinationFilePath);
+
+
         String header = rc.getHeader();
         byte[] response = setResponse(rc.getStatusCode(), rc.getPath());
         out.write(header.getBytes());
-        out.write(response);
+        if(response != null)
+            out.write(response);
     }
 
     /**
@@ -172,6 +214,14 @@ class ClientConnectionThread implements Runnable
                 byteArr = loadFile(destinationFilePath);
                 break;
             }
+            case "201 Created": {
+                byteArr = loadFile("http/resources/ErrorPages/201.html");
+                break;
+            }
+            case "400 Bad Request": {
+                byteArr = loadFile("http/resources/ErrorPages/400.html");
+                break;
+            }
             case "404 Not Found": {
                 byteArr = loadFile("http/resources/ErrorPages/404.html");
                 break;
@@ -180,9 +230,38 @@ class ClientConnectionThread implements Runnable
                 byteArr = loadFile("http/resources/ErrorPages/403.html");
                 break;
             }
+            case "413 Payload Too Large": {
+                byteArr = loadFile("http/resources/ErrorPages/413.html");
+                break;
+            }
+
+            case "414 URI Too Long": {
+                byteArr = loadFile("http/resources/ErrorPages/414.html");
+                break;
+            }
+
+            case "415 Unsupported Media Type": {
+                byteArr = loadFile("http/resources/ErrorPages/415.html");
+                break;
+            }
+            
+            case "451 Unavailable For Legal Reasons": {
+                byteArr = loadFile("http/resources/ErrorPages/451.html");
+                break;
+            }
+
             case "500 Internal Server Error": {
                 byteArr = loadFile("http/resources/ErrorPages/500.html");
                 break;
+            }
+
+            case "501 Not Implemented": {
+                byteArr = loadFile("http/resources/ErrorPages/501.html");
+                break;
+            }
+
+            case "505 HTTP Version Not Supported": {
+
             }
         }
         return byteArr;
@@ -222,7 +301,6 @@ class ClientConnectionThread implements Runnable
         String filename ="";
         String contentsLength ="";
         String boundaryNumber = "";
-
         Scanner lineScanner = new Scanner(request);
 
         // Find boundary number
@@ -259,7 +337,7 @@ class ClientConnectionThread implements Runnable
 
         // Find the last part of the header
         int byteCountLastPartHeader = 0,
-         lastPieceHeaderLength = 9;
+                lastPieceHeaderLength = 9;
 
         boolean found = false;
 
@@ -341,7 +419,6 @@ class ClientConnectionThread implements Runnable
         file.write(imageData);
         file.close();
     }
-
 }
 
 

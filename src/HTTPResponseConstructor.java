@@ -15,22 +15,21 @@ class HTTPResponseConstructor {
     private String header;
     private String statusCode;
     private String pathName;
+    private String extension;
 
     /**
-     * Normalizes path to the file, computes the status code for it and construct the HTTP header
+     * Normalizes path to the file, gets extension of the file, computes the status code for it and construct the HTTP header
      * @param path - path to the desired file
      */
     HTTPResponseConstructor(String path) {
         inputDir = path;
-        setPath();
-        setStatusCode();
-        setHeader();
+
     }
 
     /**
      * Constructs http response based on status code and sets the corresponding field
      */
-    private void setHeader() {
+    void setHeader() {
 
         if (statusCode.equals("200 OK")) {
             File f = new File(getPath());
@@ -67,40 +66,62 @@ class HTTPResponseConstructor {
     /**
      * Determines the status code by trying to access the specified file
      */
-    private void setStatusCode() {
+    void setStatusCode() {
         String ok = "200 OK",
                 forbidden = "403 Forbidden",
                 notFound = "404 Not Found",
-                serverErr = "500 Internal Server Error";
+                tooLarge = "413 Payload Too Large",
+                tooLong = "414 URI Too Long",
+                serverErr = "500 Internal Server Error",
+                wrongMedia = "415 Unsupported Media Type",
+                legalReason = "451 Unavailable For Legal Reasons";
 
         try {
             File file = new File(getPath());
             boolean exists = file.exists(),
                     hidden = isHidden(),
-                    isDirectory = file.isDirectory();
+                    isDirectory = file.isDirectory(),
+                    oversized = file.length() > 2000000,//
+                    lengthy = inputDir.length() > 100,
+                    unsupported = extension == null,
+                    illegal = getPath().equals("http\\resources\\dir2\\TheAnswer.txt");
 
-            if (hidden)
-                statusCode = forbidden;
+            if (oversized)
+                statusCode = tooLarge;
 
             else if (!exists)
                 statusCode = notFound;
 
-            else if (isDirectory) {
+            else if(hidden)
+                statusCode = forbidden;
+
+            else if(isDirectory) {
                 //if the file is a directory, check if it contains index html or htm, otherwise return 404 Not Found
                 if (new File(getPath(), "index.html").exists()) {
                     inputDir = inputDir + "/index.html";
                     setPath();
+                    setExtension();
                     setStatusCode();
 
                 } else if (new File(getPath(), "index.htm").exists()) {
                     inputDir = inputDir + "/index.htm";
                     setPath();
+                    setExtension();
                     setStatusCode();
                 }
                 else
                     statusCode = notFound;
 
-            } else
+            }
+
+            else if(lengthy) statusCode = tooLong;
+
+            else if(unsupported) statusCode = wrongMedia;
+
+            else if (illegal)
+                statusCode = legalReason;
+
+            else
                 statusCode = ok;
 
         } catch (SecurityException e) {
@@ -112,6 +133,9 @@ class HTTPResponseConstructor {
         }
     }
 
+    void forceStatusCode(String forced){
+        statusCode = forced;
+    }
     /**
      * Gets the status code from the corresponding field
      * @return Status code
@@ -153,7 +177,7 @@ class HTTPResponseConstructor {
      * ensures correct merging of two parts, and correct format (e.g. correct slashes),
      * and sets corresponding field
      */
-    private void setPath() {
+    void setPath() {
         pathName = Paths.get("http/resources", inputDir).normalize().toString();
     }
 
@@ -171,16 +195,26 @@ class HTTPResponseConstructor {
      * @return String representation of the file extension
      */
     private String getExtension() {
-
-        String extension = inputDir.substring(inputDir.lastIndexOf(".") + 1, inputDir.length());
-
-        if (extension.equals("png"))
-            return "image/png";
-
-        else
-            return "text/html; charset=UTF-8";
+        return extension;
     }
 
+    void setExtension() {
+        String ext = inputDir.substring(inputDir.lastIndexOf(".") + 1, inputDir.length());;
+        switch (ext) {
+            case "png":
+                extension = "image/png";
+                break;
+            case "html":
+            case "htm":
+            case "txt":
+                extension = "text/html; charset=UTF-8";
+                break;
+            default:
+                extension = null;
+                break;
+        }
+
+    }
     /**
      * Checks if the client is trying to access the "secret" directory
      * @return boolean isHidden
