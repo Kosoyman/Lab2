@@ -10,8 +10,8 @@ import java.util.Scanner;
  */
 public class HTTPServer
 {
-    public static final int BUFSIZE = 1024;
-    public static final int MYPORT = 8888;
+    private static final int BUFSIZE = 1024;
+    private static final int MYPORT = 8888;
 
     public static void main(String[] args) {
 
@@ -50,9 +50,8 @@ class ClientConnectionThread implements Runnable
 {
     private Socket clientSocket;
     private int buffSize;
-    private int connectionTimeOut;
 
-    public ClientConnectionThread(Socket socket, int buffSize)
+    ClientConnectionThread(Socket socket, int buffSize)
     {
         this.clientSocket = socket;
         this.buffSize = buffSize;
@@ -112,7 +111,7 @@ class ClientConnectionThread implements Runnable
 
     /**
      * Help-method for sending back a response. This is just for testing purposes
-     * @param req
+     * @param req - request
      */
     private void processRequest(byte[] req, OutputStream out) throws IOException {
 
@@ -127,19 +126,31 @@ class ClientConnectionThread implements Runnable
         String destinationFilePath = null;
 
         /*
-        Atm GET is only supported
-        if the request is not GET, it will be handled in SetResponse method
+        if the request is not GET, PUT, or POST, it will be handled in SetResponse method
         */
-        if (reqMeth.equals("GET"))
-            destinationFilePath = requestScanner.next().substring(1);
+        switch (reqMeth) {
+            case "GET":
+                destinationFilePath = requestScanner.next().substring(1);
+                break;
 
-        else if (reqMeth.equals("POST"))
-        {
-            // currently bypasses the response, closes connection after image has been uploaded.
-            uploadImage(req);
-            return;
+            case "POST":
+                uploadImage(req, null);
+                destinationFilePath = "uploads/successful.html";
+                break;
+
+            case "PUT":
+                destinationFilePath = requestScanner.next().substring(1);
+
+                if(!destinationFilePath.contains("secretDir")) {
+                    uploadImage(req, destinationFilePath);
+                    destinationFilePath = "uploads/successful.html";
+                }
+
+                else
+                    destinationFilePath = "secretDir";
+
+                break;
         }
-
 
         HTTPResponseConstructor rc = new HTTPResponseConstructor(destinationFilePath);
         String header = rc.getHeader();
@@ -149,11 +160,60 @@ class ClientConnectionThread implements Runnable
     }
 
     /**
+     *Form a response of the specific HTML-file depending on its existence and accessibility
+     * @param status - status code of the HTTP message
+     * @param destinationFilePath - path to the required file
+     * @return byteArr - byte array containing raw bytes of the file
+     */
+    private byte[] setResponse(String status, String destinationFilePath){
+        byte[] byteArr = null;
+        switch (status) {
+            case "200 OK": {
+                byteArr = loadFile(destinationFilePath);
+                break;
+            }
+            case "404 Not Found": {
+                byteArr = loadFile("http/resources/ErrorPages/404.html");
+                break;
+            }
+            case "403 Forbidden": {
+                byteArr = loadFile("http/resources/ErrorPages/403.html");
+                break;
+            }
+            case "500 Internal Server Error": {
+                byteArr = loadFile("http/resources/ErrorPages/500.html");
+                break;
+            }
+        }
+        return byteArr;
+    }
+
+    /**
+     * Loads file from a String path name into a byte array
+     * @param pathName - path to the required file
+     * @return byteArr - byte array containing contents of the file
+     */
+    private byte[] loadFile(String pathName)
+    {
+        byte[] byteArr = null;
+
+        try {
+            FileInputStream dataFileReader = new FileInputStream(pathName);
+            byteArr = new byte[dataFileReader.available()];
+            dataFileReader.read(byteArr);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return byteArr;
+    }
+
+    /**
      * Test-method to extract image (png) binary data from a POST-request and store it as a file
      * @param req byte-array containing full request from client
      * @throws IOException
      */
-    private void uploadImage(byte[] req) throws IOException {
+    private void uploadImage(byte[] req, String path) throws IOException {
 
 
         // Make string-version of request, used to extract some data
@@ -170,9 +230,7 @@ class ClientConnectionThread implements Runnable
         {
             String currentRow = lineScanner.nextLine();
             if(currentRow.contains("boundary=---------------------------"))
-            {
                 boundaryNumber = currentRow.replace("Content-Type: multipart/form-data; boundary=---------------------------", "");
-            }
         }
 
         // Find contents length
@@ -180,9 +238,7 @@ class ClientConnectionThread implements Runnable
         {
             String currentRow = lineScanner.nextLine();
             if(currentRow.contains("Content-Length:"))
-            {
                 contentsLength = currentRow.split(" ")[1];
-            }
         }
 
         // Find name of file
@@ -202,22 +258,20 @@ class ClientConnectionThread implements Runnable
         System.out.println("Boundary-number is: " + boundaryNumber);
 
         // Find the last part of the header
-        int byteCountLastPartHeader = 0;
-        int lastPieceHeaderLength = 9;
+        int byteCountLastPartHeader = 0,
+         lastPieceHeaderLength = 9;
 
         boolean found = false;
 
         while (!found)
         {
-            byte[] currentBytePiece = Arrays.copyOfRange(req, byteCountLastPartHeader, byteCountLastPartHeader + lastPieceHeaderLength);
+            byte[] currentBytePiece = Arrays.copyOfRange(req, byteCountLastPartHeader,
+                    byteCountLastPartHeader + lastPieceHeaderLength);
             if (new String(currentBytePiece, "UTF-8").equals("image/png"))
-            {
                 found = true;
-            }
+
             else
-            {
                 byteCountLastPartHeader++;
-            }
         }
 
         // This string marks the end of binary data
@@ -231,19 +285,17 @@ class ClientConnectionThread implements Runnable
 
         while (!found)
         {
-            byte[] currentBytePiece = Arrays.copyOfRange(req, endBinaryMarkByteCount, endBinaryMarkByteCount + endBinaryLinesize);
+            byte[] currentBytePiece = Arrays.copyOfRange(req, endBinaryMarkByteCount,
+                    endBinaryMarkByteCount + endBinaryLinesize);
             if (new String(currentBytePiece, "UTF-8").equals(endBinaryMarker))
-            {
                 found = true;
-            }
+
             else
-            {
                 endBinaryMarkByteCount++;
-            }
 
         }
 
-        // 8 is for the mage/png characters, 4 is for the CRLF on two rows
+        // 8 is for the image/png characters, 4 is for the CRLF on two rows
         int lastByteOfHeader = byteCountLastPartHeader + 8 + 4;
 
         int beginningOfImageDataByte = lastByteOfHeader + 1;
@@ -278,61 +330,18 @@ class ClientConnectionThread implements Runnable
         //System.out.println("IMAGE DATA BELOW");
         //System.out.println(new String(imageData, "UTF-8"));
 
-        FileOutputStream file = new FileOutputStream("http/resources/dir1/" + filename);
+        FileOutputStream file;
+
+        if (path == null)
+            file = new FileOutputStream("http/resources/uploads/" + filename);
+
+        else
+            file = new FileOutputStream(path + filename);
+
         file.write(imageData);
         file.close();
     }
 
-
-    /*
-    Form a response of a standard-header and the specific HTML-file
-    */
-    private byte[] setResponse(String status, String destinationFilePath){
-        byte[] byteArr = null;
-        try {
-            switch (status) {
-                case "200 OK": {
-                    FileInputStream dataFileReader = new FileInputStream(destinationFilePath);
-
-                    byteArr = new byte[dataFileReader.available()];
-                    dataFileReader.read(byteArr);
-
-                    break;
-                }
-                case "404 Not Found": {
-                    FileInputStream dataFileReader = new FileInputStream("http/resources/ErrorPages/fileNotFound.html");
-
-                    byteArr = new byte[dataFileReader.available()];
-                    dataFileReader.read(byteArr);
-
-                    break;
-                }
-                case "403 Forbidden": {
-                    FileInputStream dataFileReader = new FileInputStream("http/resources/ErrorPages/forbidden.html");
-
-                    byteArr = new byte[dataFileReader.available()];
-                    dataFileReader.read(byteArr);
-
-                    break;
-                }
-                case "500 Internal Server Error": {
-                    FileInputStream dataFileReader = new FileInputStream("http/resources/ErrorPages/internalError.html");
-
-                    byteArr = new byte[dataFileReader.available()];
-                    dataFileReader.read(byteArr);
-
-                    break;
-                }
-            }
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return byteArr;
-    }
 }
 
 

@@ -16,6 +16,10 @@ class HTTPResponseConstructor {
     private String statusCode;
     private String pathName;
 
+    /**
+     * Normalizes path to the file, computes the status code for it and construct the HTTP header
+     * @param path - path to the desired file
+     */
     HTTPResponseConstructor(String path) {
         inputDir = path;
         setPath();
@@ -23,7 +27,9 @@ class HTTPResponseConstructor {
         setHeader();
     }
 
-    /* constructs and returns string http response based on status code */
+    /**
+     * Constructs http response based on status code and sets the corresponding field
+     */
     private void setHeader() {
 
         if (statusCode.equals("200 OK")) {
@@ -50,12 +56,17 @@ class HTTPResponseConstructor {
         }
     }
 
-    /* returns the header */
+    /**
+     * Gets the header from the corresponding field
+     * @return the header
+     */
     String getHeader(){
         return header;
     }
 
-    /* determines the status code by trying to access the specified file */
+    /**
+     * Determines the status code by trying to access the specified file
+     */
     private void setStatusCode() {
         String ok = "200 OK",
                 forbidden = "403 Forbidden",
@@ -101,48 +112,64 @@ class HTTPResponseConstructor {
         }
     }
 
-    /* returns status code */
+    /**
+     * Gets the status code from the corresponding field
+     * @return Status code
+     */
     String getStatusCode() {
         return statusCode;
     }
 
-    /*
-    returns String representation of current date with format specified in the fields
-    */
+    /**
+     * Calculates and returns the current date and time
+     * @return String representation of current date with format specified in the fields
+     */
     private String getDate() {
         final Date currentTime = new Date();
         sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
         return (sdf.format(currentTime));
     }
 
-    /* returns String representation of file length in bytes, needed for the HTTP header */
+    /**
+     * Computes and returns the length of the file
+     * @param file - the specified file
+     * @return String representation of file length in bytes
+     */
     private String getContentLength(File file) {
         return String.valueOf(file.length());
     }
 
-    /* returns String representation of file last modified date in fields, needed for the HTTP header */
+    /**
+     * Computes and returns the last modified date
+     * @param file - the specified file
+     * @return String representation of file last modified date in fields
+     */
     private String getLastModified(File file) {
         return sdf.format(file.lastModified());
     }
 
-    /*
-    combines the path to the server folder with the path specified by the client,
-    ensures correct merging of two parts, and correct format (e.g. slashes, no redundancy in the path),
-    returns String representation for convenience
-    */
+    /**
+     * Combines the path to the server folder with the path specified by the client,
+     * ensures correct merging of two parts, and correct format (e.g. correct slashes),
+     * and sets corresponding field
+     */
     private void setPath() {
         pathName = Paths.get("http/resources", inputDir).normalize().toString();
     }
 
-    /* returns path name */
+    /**
+     * Gets path name from the corresponding field
+     * @return Path name
+     */
     String getPath(){
         return pathName;
     }
 
-    /*
-    gets extension of the file that is requested, right now only determines if a file is png image, otherwise
-    returns text/html
-    */
+    /**
+     * Computes extension of the file that is requested, right now only determines if a file is png image, otherwise
+     * considers it a text
+     * @return String representation of the file extension
+     */
     private String getExtension() {
 
         String extension = inputDir.substring(inputDir.lastIndexOf(".") + 1, inputDir.length());
@@ -154,7 +181,10 @@ class HTTPResponseConstructor {
             return "text/html; charset=UTF-8";
     }
 
-    /* checks if the client is trying to access the "secret" directory */
+    /**
+     * Checks if the client is trying to access the "secret" directory
+     * @return boolean isHidden
+     */
     private boolean isHidden(){
         return inputDir.contains("secretDir");
     }
