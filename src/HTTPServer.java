@@ -72,6 +72,13 @@ class ClientConnectionThread implements Runnable
             // Wait for a message
             while(in.available() == 0);
 
+            // Small delay so data can get through
+            try {
+                Thread.sleep(5);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
             // Keep reading from input-stream as long as we have bytes to process.
             while (in.available() != 0)
             {
@@ -87,6 +94,7 @@ class ClientConnectionThread implements Runnable
                 }
 
                 temp.write(buf);
+
             }
 
             System.out.printf("HTTP request from %s using port %d \n", clientSocket.getInetAddress(), clientSocket.getPort());
@@ -94,10 +102,6 @@ class ClientConnectionThread implements Runnable
             // For debugging purposes
             //System.out.println(new String(temp.toByteArray(), "UTF-8"));
 
-            //String request = new String(temp.toByteArray(), "UTF-8").trim();
-
-
-            //processRequest(request.getBytes(), out);
             processRequest(temp.toByteArray(), out);
 
             System.out.printf("Closing connection for %s on port %d \n", clientSocket.getInetAddress(), clientSocket.getPort());
@@ -119,6 +123,7 @@ class ClientConnectionThread implements Runnable
         String request = new String(req, "UTF-8");
 
         Scanner requestScanner = new Scanner(request);
+
 
         // Grab the first word in the HTTP-request which is the method
         String reqMeth = requestScanner.next();
@@ -215,36 +220,18 @@ class ClientConnectionThread implements Runnable
      */
     private void uploadImage(byte[] req, String path) throws IOException {
 
-
         // Make string-version of request, used to extract some data
         String request = new String(req, "UTF-8");
 
         String filename ="";
-        String contentsLength ="";
-        String boundaryNumber = "";
 
         Scanner lineScanner = new Scanner(request);
 
-        // Find boundary number
-        while(boundaryNumber.equals(""))
-        {
-            String currentRow = lineScanner.nextLine();
-            if(currentRow.contains("boundary=---------------------------"))
-                boundaryNumber = currentRow.replace("Content-Type: multipart/form-data; boundary=---------------------------", "");
-        }
-
-        // Find contents length
-        while(contentsLength.equals(""))
-        {
-            String currentRow = lineScanner.nextLine();
-            if(currentRow.contains("Content-Length:"))
-                contentsLength = currentRow.split(" ")[1];
-        }
-
         // Find name of file
-        while(filename.equals(""))
+        while(filename.equals("") && lineScanner.hasNextLine())
         {
             String currentRow = lineScanner.nextLine();
+
             if(currentRow.contains("filename="))
             {
                 String unCleanFilename = currentRow.split(" ")[3];
@@ -252,83 +239,17 @@ class ClientConnectionThread implements Runnable
             }
         }
 
-        // Debugging purposes
-        System.out.println("The filename is: " + filename);
-        System.out.println("Contents-length is: " + Integer.parseInt(contentsLength));
-        System.out.println("Boundary-number is: " + boundaryNumber);
+        // -119 since it will be interpretaded as a signed int.
+        byte[] pngSignature = {-119, 80, 78, 71, 13, 10, 26, 10};
 
-        // Find the last part of the header
-        int byteCountLastPartHeader = 0,
-         lastPieceHeaderLength = 9;
+        byte[] pngIEND = {73, 69, 78, 68};
 
-        boolean found = false;
+        int beginningOfImageDataByte = findByteSequenceIndex(req, pngSignature);
 
-        while (!found)
-        {
-            byte[] currentBytePiece = Arrays.copyOfRange(req, byteCountLastPartHeader,
-                    byteCountLastPartHeader + lastPieceHeaderLength);
-            if (new String(currentBytePiece, "UTF-8").equals("image/png"))
-                found = true;
+        // +4 because of the CRC in the end
+        int lastByteofImageData = findByteSequenceIndex(req, pngIEND) + pngIEND.length + 4;
 
-            else
-                byteCountLastPartHeader++;
-        }
-
-        // This string marks the end of binary data
-        String endBinaryMarker = "-----------------------------" + boundaryNumber + "--";
-
-        found = false;
-
-        // Find the first byte of the end of binary data marker
-        int endBinaryMarkByteCount = 0;
-        int endBinaryLinesize = endBinaryMarker.length();
-
-        while (!found)
-        {
-            byte[] currentBytePiece = Arrays.copyOfRange(req, endBinaryMarkByteCount,
-                    endBinaryMarkByteCount + endBinaryLinesize);
-            if (new String(currentBytePiece, "UTF-8").equals(endBinaryMarker))
-                found = true;
-
-            else
-                endBinaryMarkByteCount++;
-
-        }
-
-        // 8 is for the image/png characters, 4 is for the CRLF on two rows
-        int lastByteOfHeader = byteCountLastPartHeader + 8 + 4;
-
-        int beginningOfImageDataByte = lastByteOfHeader + 1;
-
-        // Extract image data. -2 because we want to remove the last newline (CRLF)
-        byte[] imageData = Arrays.copyOfRange(req, beginningOfImageDataByte, endBinaryMarkByteCount - 2);
-
-        // For debugging purposes
-        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte]);
-        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte + 1]);
-        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte + 2]);
-        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte + 3]);
-        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte + 4]);
-        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte + 5]);
-        System.out.println("beginning of png byte: " + req[beginningOfImageDataByte + 6]);
-
-        System.out.println("Last byte: " + imageData[imageData.length -1]);
-        System.out.println("Last byte: " + imageData[imageData.length -2]);
-        System.out.println("Last byte: " + imageData[imageData.length -3]);
-        System.out.println("Last byte: " + imageData[imageData.length -4]);
-        System.out.println("Last byte: " + imageData[imageData.length -5]);
-        System.out.println("Last byte: " + imageData[imageData.length -6]);
-        System.out.println("Last byte: " + imageData[imageData.length -7]);
-        System.out.println("Last byte: " + imageData[imageData.length -8]);
-        System.out.println("Last byte: " + imageData[imageData.length -9]);
-        System.out.println("Last byte: " + imageData[imageData.length -10]);
-        System.out.println("Last byte: " + imageData[imageData.length -11]);
-        System.out.println("Last byte: " + imageData[imageData.length -12]);
-
-        System.out.println("Total number of bytes: " + (req.length - beginningOfImageDataByte));
-
-        //System.out.println("IMAGE DATA BELOW");
-        //System.out.println(new String(imageData, "UTF-8"));
+        byte[] imageData = Arrays.copyOfRange(req, beginningOfImageDataByte, lastByteofImageData);
 
         FileOutputStream file;
 
@@ -342,6 +263,46 @@ class ClientConnectionThread implements Runnable
         file.close();
     }
 
+    /**
+     * Help-method to return the first index of a byte-sequence in a byte-buffer
+     * @param buf Byte buffer
+     * @param seq Byte sequence to look for
+     * @return first index of byte-sequence, -1 if not found.
+     */
+    private int findByteSequenceIndex(byte[] buf, byte[] seq) {
+
+        boolean found = false;
+        int i = 0;
+
+        // Main loop, go through whole buffer if needed
+        while (!found && i <= buf.length - seq.length) {
+
+            int j = 0;
+
+            // Check the actual location and elements in front, if they corresponds to the sequence
+            while (j < seq.length && buf[i + j] == seq[j])
+            {
+                j++;
+            }
+            if (j == seq.length)
+            {
+                found = true;
+            }
+            else
+            {
+                i++;
+            }
+        }
+
+        if (found)
+        {
+            return i;
+        }
+        else
+        {
+            return -1;
+        }
+    }
 }
 
 
