@@ -130,9 +130,7 @@ class ClientConnectionThread implements Runnable
         String destinationFilePath = null;
         HTTPResponseConstructor rc;
         String fileToGet = requestScanner.next().substring(1),
-                HTTP = requestScanner.next(),
-                extension = requestScanner.next();
-        System.err.println(extension);
+                HTTP = requestScanner.next();
 
         /*
         if the request is not GET, PUT, or POST, it will be handled in SetResponse method
@@ -152,13 +150,11 @@ class ClientConnectionThread implements Runnable
             rc.setPath();
             rc.setExtension();
             rc.setStatusCode();
-
+        }
             /*
             the rest needed to be separated because now we do not want to compute the status code
             but rather force it to be of a certain value
             */
-
-        }
 
         //if HTTP is ok but the request is not get
         else {
