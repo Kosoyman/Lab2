@@ -132,9 +132,6 @@ class ClientConnectionThread implements Runnable
         String fileToGet = requestScanner.next().substring(1),
                 HTTP = requestScanner.next();
 
-        /*
-        if the request is not GET, PUT, or POST, it will be handled in SetResponse method
-        */
         //check if http is ok
         if(!HTTP.equals("HTTP/1.1")) {
             destinationFilePath = "http/resources/StatusPages/505.html";
@@ -159,26 +156,50 @@ class ClientConnectionThread implements Runnable
         //if HTTP is ok but the request is not get
         else {
             String verdict = null;
+
             if (reqMeth.equals("POST") || reqMeth.equals("PUT")){
+                String filename = "";
 
-                if (reqMeth.equals("POST")) {
-                    uploadImage(req, null);
-                    destinationFilePath = "uploads/StatusPages/201.html";
-                    verdict = "201 Created";
+                while(filename.equals(""))
+                {
+                    String currentRow = requestScanner.nextLine();
 
-                } else if (reqMeth.equals("PUT")) {
-                    destinationFilePath = requestScanner.next().substring(1);
-
-                    if (!destinationFilePath.contains("secretDir")) {
-                        uploadImage(req, destinationFilePath);
-                        destinationFilePath = "uploads/StatusPages/201.html";
-                        verdict = "201 Created";
+                    if(currentRow.contains("filename="))
+                    {
+                        String unCleanFilename = currentRow.split(" ")[3];
+                        filename = unCleanFilename.substring(unCleanFilename.indexOf("\"") + 1, unCleanFilename.lastIndexOf("\""));
                     }
-
-                    else
-                        destinationFilePath = "secretDir";
                 }
 
+                filename = filename.split("\\.")[1];
+
+                //check if the file to be uploaded is png
+                if(filename.equals("png")) {
+                    if (reqMeth.equals("POST")) {
+                        uploadImage(req, null);
+                        destinationFilePath = "uploads/StatusPages/201.html";
+                        verdict = "201 Created";
+
+                    }
+
+                    else if (reqMeth.equals("PUT")) {
+                        destinationFilePath = requestScanner.next().substring(1);
+
+                        if (!destinationFilePath.contains("secretDir")) {
+                            uploadImage(req, destinationFilePath);
+                            destinationFilePath = "uploads/StatusPages/201.html";
+                            verdict = "201 Created";
+                        }
+
+                        else
+                            destinationFilePath = "secretDir";
+                    }
+                }
+
+                else {
+                    destinationFilePath = "uploads/StatusPages/415.html";
+                    verdict = "415 Unsupported Media Type";
+                }
             }
 
             //if HTTP is ok but the request is neither get, nor post, nor put
@@ -187,8 +208,11 @@ class ClientConnectionThread implements Runnable
                 if (reqMeth.equals("HEAD") || reqMeth.equals("DELETE") || reqMeth.equals("OPTIONS") || reqMeth.equals("CONNECT")) {
                     destinationFilePath = "http/resources/StatusPages/501.html";
                     verdict = "501 Not Implemented";
-                    //any other request is to be considered a bad request
-                } else {
+
+                }
+
+                //any other request is to be considered a bad request
+                else {
                     destinationFilePath = "http/resources/StatusPages/400.html";
                     verdict = "400 Bad Request";
                 }
