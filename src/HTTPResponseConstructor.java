@@ -10,7 +10,7 @@ import java.util.TimeZone;
  */
 class HTTPResponseConstructor {
 
-    private final SimpleDateFormat sdf = new SimpleDateFormat("EEE, d MMM, yyyy hh:mm:ss a z");
+    private final SimpleDateFormat SDF = new SimpleDateFormat("EEE, d MMM, yyyy hh:mm:ss a z");
     private String inputDir;
     private String header;
     private String statusCode;
@@ -18,12 +18,11 @@ class HTTPResponseConstructor {
     private String extension;
 
     /**
-     * Normalizes path to the file, gets extension of the file, computes the status code for it and construct the HTTP header
+     * Normalizes path to the file
      * @param path - path to the desired file
      */
     HTTPResponseConstructor(String path) {
         inputDir = path;
-
     }
 
     /**
@@ -36,7 +35,6 @@ class HTTPResponseConstructor {
             header = "HTTP/1.1 " + statusCode + '\n' +
                     "Date: " + getDate() + '\n' +
                     "Content-Type: " + getExtension() +'\n' +
-                    //"Content-Encoding: UTF-8\n" +
                     "Content-Length: " + getContentLength(f) + '\n' +
                     "Last-Modified: " + getLastModified(f) + '\n' +
                     "Server: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\n" +
@@ -114,9 +112,11 @@ class HTTPResponseConstructor {
 
             }
 
-            else if(lengthy) statusCode = tooLong;
+            else if(lengthy)
+                statusCode = tooLong;
 
-            else if(unsupported) statusCode = wrongMedia;
+            else if(unsupported)
+                statusCode = wrongMedia;
 
             else if (illegal)
                 statusCode = legalReason;
@@ -133,9 +133,14 @@ class HTTPResponseConstructor {
         }
     }
 
+    /**
+     * Forces a status code without any computation
+     * @param forced - the status code that is to be forced
+     */
     void forceStatusCode(String forced){
         statusCode = forced;
     }
+
     /**
      * Gets the status code from the corresponding field
      * @return Status code
@@ -150,8 +155,8 @@ class HTTPResponseConstructor {
      */
     private String getDate() {
         final Date currentTime = new Date();
-        sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
-        return (sdf.format(currentTime));
+        SDF.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return (SDF.format(currentTime));
     }
 
     /**
@@ -169,7 +174,7 @@ class HTTPResponseConstructor {
      * @return String representation of file last modified date in fields
      */
     private String getLastModified(File file) {
-        return sdf.format(file.lastModified());
+        return SDF.format(file.lastModified());
     }
 
     /**
@@ -190,14 +195,16 @@ class HTTPResponseConstructor {
     }
 
     /**
-     * Computes extension of the file that is requested, right now only determines if a file is png image, otherwise
-     * considers it a text
+     * Gets file extension from the corresponding field
      * @return String representation of the file extension
      */
     private String getExtension() {
         return extension;
     }
 
+    /** Computes extension of the file that is requested and sets the corresponding field,
+     * right now only determines if a file is png image, html/htm, or a txt otherwise sets it null
+     */
     void setExtension() {
         String ext = inputDir.substring(inputDir.lastIndexOf(".") + 1, inputDir.length());;
         switch (ext) {
@@ -215,6 +222,7 @@ class HTTPResponseConstructor {
         }
 
     }
+
     /**
      * Checks if the client is trying to access the "secret" directory
      * @return boolean isHidden
@@ -222,4 +230,5 @@ class HTTPResponseConstructor {
     private boolean isHidden(){
         return inputDir.contains("secretDir");
     }
+
 }

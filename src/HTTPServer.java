@@ -124,86 +124,84 @@ class ClientConnectionThread implements Runnable
 
         Scanner requestScanner = new Scanner(request);
 
-
         // Grab the first word in the HTTP-request which is the method
         String reqMeth = requestScanner.next();
 
         String destinationFilePath;
         HTTPResponseConstructor rc;
+        String fileToGet = requestScanner.next().substring(1),
+                HTTP = requestScanner.next(),
+                extension = requestScanner.next();
+        System.err.println(extension);
+
         /*
         if the request is not GET, PUT, or POST, it will be handled in SetResponse method
         */
-        switch (reqMeth) {
-            case "GET":
-                destinationFilePath = requestScanner.next().substring(1);
-                rc = new HTTPResponseConstructor(destinationFilePath);
-                rc.setPath();
-                rc.setExtension();
-                rc.setStatusCode();
-                rc.setHeader();
-                break;
-
-            case "POST":
-                uploadImage(req, null);
-                destinationFilePath = "uploads/ErrorPages/201.html";
-                rc = new HTTPResponseConstructor(destinationFilePath);
-                rc.setPath();
-                rc.setExtension();
-                rc.forceStatusCode("201 Created");
-                rc.setHeader();
-                break;
-
-            case "PUT":
-                destinationFilePath = requestScanner.next().substring(1);
-
-                if(!destinationFilePath.contains("secretDir")) {
-                    uploadImage(req, destinationFilePath);
-                    destinationFilePath = "uploads/ErrorPages/201.html";
-                    rc = new HTTPResponseConstructor(destinationFilePath);
-                    rc.setPath();
-                    rc.setExtension();
-                    rc.forceStatusCode("201 Created");
-                    rc.setHeader();
-                }
-
-                else {
-                    destinationFilePath = "secretDir";
-                    rc = new HTTPResponseConstructor(destinationFilePath);
-                    rc.setPath();
-                    rc.setExtension();
-                    rc.forceStatusCode("201 Created");
-                    rc.setHeader();
-                }
-                break;
-
-            case "HEAD":
-            case "DELETE":
-            case "OPTIONS":
-            case "CONNECT":
-                destinationFilePath = "http/resources/ErrorPages/501.html";
-                rc = new HTTPResponseConstructor(destinationFilePath);
-                rc.setPath();
-                rc.setExtension();
-                rc.forceStatusCode("501 Not Implemented");
-                rc.setHeader();
-                break;
-
-            default:
-                destinationFilePath = "http/resources/ErrorPages/400.html";
-                rc = new HTTPResponseConstructor(destinationFilePath);
-                rc.setPath();
-                rc.setExtension();
-                rc.forceStatusCode("400 Bad Request");
-                rc.setHeader();
+        //check if http is ok
+        if(!HTTP.equals("HTTP/1.1")) {
+            destinationFilePath = "http/resources/StatusPages/505.html";
+            rc = new HTTPResponseConstructor(destinationFilePath);
+            rc.setPath();
+            rc.setExtension();
+            rc.forceStatusCode("505 HTTP Version Not Supported");
         }
 
+        else if (reqMeth.equals("GET")) {
+            destinationFilePath = fileToGet;
+            rc = new HTTPResponseConstructor(destinationFilePath);
+            rc.setPath();
+            rc.setExtension();
+            rc.setStatusCode();
 
+            /*
+            the rest needed to be separated because now we do not want to compute the status code
+            but rather force it to be of a certain value
+            */
 
+        } else if (reqMeth.equals("POST")) {
+            uploadImage(req, null);
+            destinationFilePath = "uploads/StatusPages/201.html";
+            rc = new HTTPResponseConstructor(destinationFilePath);
+            rc.setPath();
+            rc.setExtension();
+            rc.forceStatusCode("201 Created");
+
+        } else if (reqMeth.equals("PUT")) {
+            destinationFilePath = requestScanner.next().substring(1);
+
+            if (!destinationFilePath.contains("secretDir")) {
+                uploadImage(req, destinationFilePath);
+                destinationFilePath = "uploads/StatusPages/201.html";
+            } else
+                destinationFilePath = "secretDir";
+
+            rc = new HTTPResponseConstructor(destinationFilePath);
+            rc.setPath();
+            rc.setExtension();
+            rc.forceStatusCode("201 Created");
+
+            //checking for other standard HTTP requests that we didn't implement
+        } else if (reqMeth.equals("HEAD") || reqMeth.equals("DELETE") || reqMeth.equals("OPTIONS") || reqMeth.equals("CONNECT")) {
+            destinationFilePath = "http/resources/StatusPages/501.html";
+            rc = new HTTPResponseConstructor(destinationFilePath);
+            rc.setPath();
+            rc.setExtension();
+            rc.forceStatusCode("501 Not Implemented");
+
+            //any other request is to be considered a bad request
+        } else {
+            destinationFilePath = "http/resources/StatusPages/400.html";
+            rc = new HTTPResponseConstructor(destinationFilePath);
+            rc.setPath();
+            rc.setExtension();
+            rc.forceStatusCode("400 Bad Request");
+        }
+
+        rc.setHeader();
         String header = rc.getHeader();
         byte[] response = setResponse(rc.getStatusCode(), rc.getPath());
         out.write(header.getBytes());
-        if(response != null)
-            out.write(response);
+        out.write(response);
     }
 
     /**
@@ -213,62 +211,16 @@ class ClientConnectionThread implements Runnable
      * @return byteArr - byte array containing raw bytes of the file
      */
     private byte[] setResponse(String status, String destinationFilePath){
-        byte[] byteArr = null;
-        switch (status) {
-            case "200 OK": {
-                byteArr = loadFile(destinationFilePath);
-                break;
-            }
-            case "201 Created": {
-                byteArr = loadFile("http/resources/ErrorPages/201.html");
-                break;
-            }
-            case "400 Bad Request": {
-                byteArr = loadFile("http/resources/ErrorPages/400.html");
-                break;
-            }
-            case "404 Not Found": {
-                byteArr = loadFile("http/resources/ErrorPages/404.html");
-                break;
-            }
-            case "403 Forbidden": {
-                byteArr = loadFile("http/resources/ErrorPages/403.html");
-                break;
-            }
-            case "413 Payload Too Large": {
-                byteArr = loadFile("http/resources/ErrorPages/413.html");
-                break;
-            }
+        byte[] byteArr;
 
-            case "414 URI Too Long": {
-                byteArr = loadFile("http/resources/ErrorPages/414.html");
-                break;
-            }
+        if (status.equals("200 OK"))
+            byteArr = loadFile(destinationFilePath);
 
-            case "415 Unsupported Media Type": {
-                byteArr = loadFile("http/resources/ErrorPages/415.html");
-                break;
-            }
-            
-            case "451 Unavailable For Legal Reasons": {
-                byteArr = loadFile("http/resources/ErrorPages/451.html");
-                break;
-            }
-
-            case "500 Internal Server Error": {
-                byteArr = loadFile("http/resources/ErrorPages/500.html");
-                break;
-            }
-
-            case "501 Not Implemented": {
-                byteArr = loadFile("http/resources/ErrorPages/501.html");
-                break;
-            }
-
-            case "505 HTTP Version Not Supported": {
-
-            }
+        else {
+            String statusName = status.split(" ")[0];
+            byteArr = loadFile("http/resources/StatusPages/" + statusName +".html");
         }
+
         return byteArr;
     }
 
@@ -318,7 +270,7 @@ class ClientConnectionThread implements Runnable
             }
         }
 
-        // -119 since it will be interpretaded as a signed int.
+        // -119 since it will be interpreted as a signed int.
         byte[] pngSignature = {-119, 80, 78, 71, 13, 10, 26, 10};
 
         byte[] pngIEND = {73, 69, 78, 68};
