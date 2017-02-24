@@ -127,7 +127,7 @@ class ClientConnectionThread implements Runnable
         // Grab the first word in the HTTP-request which is the method
         String reqMeth = requestScanner.next();
 
-        String destinationFilePath;
+        String destinationFilePath = null;
         HTTPResponseConstructor rc;
         String fileToGet = requestScanner.next().substring(1),
                 HTTP = requestScanner.next(),
@@ -158,43 +158,50 @@ class ClientConnectionThread implements Runnable
             but rather force it to be of a certain value
             */
 
-        } else if (reqMeth.equals("POST")) {
-            uploadImage(req, null);
-            destinationFilePath = "uploads/StatusPages/201.html";
+        }
+
+        //if HTTP is ok but the request is not get
+        else {
+            String verdict = null;
+            if (reqMeth.equals("POST") || reqMeth.equals("PUT")){
+
+                if (reqMeth.equals("POST")) {
+                    uploadImage(req, null);
+                    destinationFilePath = "uploads/StatusPages/201.html";
+                    verdict = "201 Created";
+
+                } else if (reqMeth.equals("PUT")) {
+                    destinationFilePath = requestScanner.next().substring(1);
+
+                    if (!destinationFilePath.contains("secretDir")) {
+                        uploadImage(req, destinationFilePath);
+                        destinationFilePath = "uploads/StatusPages/201.html";
+                        verdict = "201 Created";
+                    }
+
+                    else
+                        destinationFilePath = "secretDir";
+                }
+
+            }
+
+            //if HTTP is ok but the request is neither get, nor post, nor put
+            else {
+                //checking for other standard HTTP requests that we didn't implement
+                if (reqMeth.equals("HEAD") || reqMeth.equals("DELETE") || reqMeth.equals("OPTIONS") || reqMeth.equals("CONNECT")) {
+                    destinationFilePath = "http/resources/StatusPages/501.html";
+                    verdict = "501 Not Implemented";
+                    //any other request is to be considered a bad request
+                } else {
+                    destinationFilePath = "http/resources/StatusPages/400.html";
+                    verdict = "400 Bad Request";
+                }
+            }
+
             rc = new HTTPResponseConstructor(destinationFilePath);
             rc.setPath();
             rc.setExtension();
-            rc.forceStatusCode("201 Created");
-
-        } else if (reqMeth.equals("PUT")) {
-            destinationFilePath = requestScanner.next().substring(1);
-
-            if (!destinationFilePath.contains("secretDir")) {
-                uploadImage(req, destinationFilePath);
-                destinationFilePath = "uploads/StatusPages/201.html";
-            } else
-                destinationFilePath = "secretDir";
-
-            rc = new HTTPResponseConstructor(destinationFilePath);
-            rc.setPath();
-            rc.setExtension();
-            rc.forceStatusCode("201 Created");
-
-            //checking for other standard HTTP requests that we didn't implement
-        } else if (reqMeth.equals("HEAD") || reqMeth.equals("DELETE") || reqMeth.equals("OPTIONS") || reqMeth.equals("CONNECT")) {
-            destinationFilePath = "http/resources/StatusPages/501.html";
-            rc = new HTTPResponseConstructor(destinationFilePath);
-            rc.setPath();
-            rc.setExtension();
-            rc.forceStatusCode("501 Not Implemented");
-
-            //any other request is to be considered a bad request
-        } else {
-            destinationFilePath = "http/resources/StatusPages/400.html";
-            rc = new HTTPResponseConstructor(destinationFilePath);
-            rc.setPath();
-            rc.setExtension();
-            rc.forceStatusCode("400 Bad Request");
+            rc.forceStatusCode(verdict);
         }
 
         rc.setHeader();
