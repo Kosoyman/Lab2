@@ -1,31 +1,40 @@
-<script>
-    // Sources: https://coderanch.com/t/475005/Generate-PUT-request-server-XMLHttpRequest
-    //          https://blog.garstasio.com/you-dont-need-jquery/ajax/#uploading-files
-
-    function uploadImage() {
-        var formData = new FormData(),
-            file = document.getElementById('fileToUpload').files[0],
-            xhr = new XMLHttpRequest();
-
-        formData.append('file', file);
-        xhr.open('PUT', document.getElementById('path').value);
-        xhr.send(formData);
-
-        xhr = new XMLHttpRequest();
-
-        // By some reason this line needs to be here...
-        file = document.getElementById('keke').files[0];
-
-        xhr.open('PUT', document.getElementById('path').value);
-        xhr.setRequestHeader('Content-Type', file.type);
-        xhr.send(file);
-
-    }
-</script>
 
 <!DOCTYPE html>
 <html>
-<head></head>
+<head>
+    <script>
+        // Sources: https://coderanch.com/t/475005/Generate-PUT-request-server-XMLHttpRequest
+        //          https://blog.garstasio.com/you-dont-need-jquery/ajax/#uploading-files
+
+        function uploadImage() {
+
+            // multipart encoded transfer
+            var formData = new FormData(),
+                file = document.getElementById('fileToUpload').files[0],
+                xhr = new XMLHttpRequest();
+
+            // Provide user with status information
+            xhr.onreadystatechange = function() {
+
+                // Wait for response-header
+                if (this.readyState == 4) {
+
+                    // Check status code to determine if transfer was successful or not
+                    if (this.status == 201) {
+                        document.getElementById("result").innerHTML = "File uploaded successfully!";
+                    }
+                    else {
+                        document.getElementById("result").innerHTML = "Error! Please check the specified path and try again!";
+                    }
+                }
+            };
+
+            formData.append('file', file);
+            xhr.open('PUT', document.getElementById('path').value, true);
+            xhr.send(formData);
+        }
+    </script>
+</head>
 <body>
 
 Please enter a valid path, for example: <br>
@@ -39,6 +48,6 @@ and select a file to upload to this path.
     <input type="file" id="fileToUpload">
 </form>
 <button type="button" onclick="uploadImage()">Upload</button>
-<p id="demo">keke: </p>
+<div id="result"></div>
 </body>
 </html>

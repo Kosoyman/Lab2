@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.Scanner;
 
 /**
- * Simple multi-threaded HTTP-Echo server
+ * Simple multi-threaded HTTP server
  * @author Peter Danielsson, pd222dj@student.lnu.se
  */
 public class HTTPServer
@@ -74,7 +74,7 @@ class ClientConnectionThread implements Runnable
 
             // Small delay so data can get through
             try {
-                Thread.sleep(100);
+                Thread.sleep(20);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -193,9 +193,19 @@ class ClientConnectionThread implements Runnable
                         destinationFilePath = requestScanner.nextLine().split(" ")[1].substring(1);
 
                         if (!destinationFilePath.contains("secretDir")) {
-                            uploadImage(req, destinationFilePath);
-                            destinationFilePath = "uploads/StatusPages/201.html";
-                            verdict = "201 Created";
+
+                            // Make sure file could be uploaded correctly
+                            if (uploadImage(req, destinationFilePath))
+                            {
+                                destinationFilePath = "uploads/StatusPages/201.html";
+                                verdict = "201 Created";
+                            }
+                            else
+                            {
+                                destinationFilePath = "uploads/StatusPages/403.html";
+                                verdict = "403 Forbidden";
+                            }
+
                         }
 
                         else
@@ -283,53 +293,64 @@ class ClientConnectionThread implements Runnable
      *  Extract image (png) binary data from a POST-request and stores it as a file
      * @param req byte-array containing full request from client
      * @param path path (directory path) where file should be stored
+     * @return true if successfull, false otherwise
      * @throws IOException
      */
-    private void uploadImage(byte[] req, String path) throws IOException {
+    private boolean uploadImage(byte[] req, String path) throws IOException {
 
-        // Make string-version of request, used to extract some data
-        String request = new String(req, "UTF-8");
 
-        String filename ="";
+        try {
 
-        Scanner lineScanner = new Scanner(request);
+            // Make string-version of request, used to extract some data
+            String request = new String(req, "UTF-8");
 
-        // Find name of file
-        while(filename.equals("") && lineScanner.hasNextLine())
-        {
-            String currentRow = lineScanner.nextLine();
+            String filename ="";
 
-            if(currentRow.contains("filename="))
+            Scanner lineScanner = new Scanner(request);
+
+            // Find name of file
+            while(filename.equals("") && lineScanner.hasNextLine())
             {
-                String unCleanFilename = currentRow.split(" ")[3];
-                filename = unCleanFilename.substring(unCleanFilename.indexOf("\"") + 1, unCleanFilename.lastIndexOf("\""));
+                String currentRow = lineScanner.nextLine();
+
+                if(currentRow.contains("filename="))
+                {
+                    String unCleanFilename = currentRow.split(" ")[3];
+                    filename = unCleanFilename.substring(unCleanFilename.indexOf("\"") + 1, unCleanFilename.lastIndexOf("\""));
+                }
             }
+
+            // -119 since it will be interpreted as a signed int.
+            byte[] pngSignature = {-119, 80, 78, 71, 13, 10, 26, 10};
+            byte[] pngIEND = {73, 69, 78, 68};
+
+            int beginningOfImageDataByte = findByteSequenceIndex(req, pngSignature);
+
+            // +4 because of the CRC in the end
+            int lastByteofImageData = findByteSequenceIndex(req, pngIEND) + pngIEND.length + 4;
+
+           byte[] imageData = Arrays.copyOfRange(req, beginningOfImageDataByte, lastByteofImageData);
+
+            FileOutputStream file;
+
+            if (path == null)
+            {
+                file = new FileOutputStream("http/resources/uploads/" + filename);
+            }
+            else
+            {
+                file = new FileOutputStream((path + filename));
+            }
+
+            file.write(imageData);
+            file.close();
         }
-
-        // -119 since it will be interpreted as a signed int.
-        byte[] pngSignature = {-119, 80, 78, 71, 13, 10, 26, 10};
-        byte[] pngIEND = {73, 69, 78, 68};
-
-        int beginningOfImageDataByte = findByteSequenceIndex(req, pngSignature);
-
-        // +4 because of the CRC in the end
-        int lastByteofImageData = findByteSequenceIndex(req, pngIEND) + pngIEND.length + 4;
-
-        byte[] imageData = Arrays.copyOfRange(req, beginningOfImageDataByte, lastByteofImageData);
-
-        FileOutputStream file;
-
-        if (path == null)
+        catch (Exception e)
         {
-            file = new FileOutputStream("http/resources/uploads/" + filename);
-        }
-        else
-        {
-            file = new FileOutputStream((path + filename));
+            return false;
         }
 
-        file.write(imageData);
-        file.close();
+        return true;
     }
 
     /**
