@@ -74,7 +74,7 @@ class ClientConnectionThread implements Runnable
 
             // Small delay so data can get through
             try {
-                Thread.sleep(5);
+                Thread.sleep(100);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -121,6 +121,8 @@ class ClientConnectionThread implements Runnable
 
         // Make string-version of request
         String request = new String(req, "UTF-8");
+
+        System.out.println(request);
 
         Scanner requestScanner = new Scanner(request);
 
@@ -171,7 +173,13 @@ class ClientConnectionThread implements Runnable
                     verdict = "201 Created";
 
                 } else if (reqMeth.equals("PUT")) {
-                    destinationFilePath = requestScanner.next().substring(1);
+
+                    // Read the request from the beginning in order to get the path
+                    requestScanner = new Scanner(request);
+
+                    // Remove first / so path is correct
+                    destinationFilePath = requestScanner.nextLine().split(" ")[1].substring(1);
+                    System.out.println(destinationFilePath);
 
                     if (!destinationFilePath.contains("secretDir")) {
                         uploadImage(req, destinationFilePath);
@@ -209,6 +217,7 @@ class ClientConnectionThread implements Runnable
         byte[] response = setResponse(rc.getStatusCode(), rc.getPath());
         out.write(header.getBytes());
         out.write(response);
+
     }
 
     /**
@@ -252,8 +261,9 @@ class ClientConnectionThread implements Runnable
     }
 
     /**
-     * Test-method to extract image (png) binary data from a POST-request and store it as a file
+     *  Extract image (png) binary data from a POST-request and stores it as a file
      * @param req byte-array containing full request from client
+     * @param path path (directory path) where file should be stored
      * @throws IOException
      */
     private void uploadImage(byte[] req, String path) throws IOException {
@@ -279,7 +289,6 @@ class ClientConnectionThread implements Runnable
 
         // -119 since it will be interpreted as a signed int.
         byte[] pngSignature = {-119, 80, 78, 71, 13, 10, 26, 10};
-
         byte[] pngIEND = {73, 69, 78, 68};
 
         int beginningOfImageDataByte = findByteSequenceIndex(req, pngSignature);
@@ -292,10 +301,13 @@ class ClientConnectionThread implements Runnable
         FileOutputStream file;
 
         if (path == null)
+        {
             file = new FileOutputStream("http/resources/uploads/" + filename);
-
+        }
         else
-            file = new FileOutputStream(path + filename);
+        {
+            file = new FileOutputStream((path + filename));
+        }
 
         file.write(imageData);
         file.close();
