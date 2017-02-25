@@ -24,14 +24,19 @@
                         document.getElementById("result").style.color = "green";
                         document.getElementById("result").innerHTML = "File uploaded successfully! (Code 201)";
                     }
-                    else if (this.status == 415) {
-                        document.getElementById("result").style.color = "red";
-                        document.getElementById("result").innerHTML = "Unsupported media type! (Code 415) Only PNG-files are supported for upload.";
-                    }
                     else if (this.status == 403)
                     {
                         document.getElementById("result").style.color = "red";
                         document.getElementById("result").innerHTML = "Error! (Code 403 Forbidden). Make sure you've provided a valid path and try again.";
+                    }
+                    else if (this.status == 405)
+                    {
+                        document.getElementById("result").style.color = "red";
+                        document.getElementById("result").innerHTML = "Error! (Code 405 Method Not Allowed). Make sure you've provided a valid path and try again.";
+                    }
+                    else if (this.status == 415) {
+                        document.getElementById("result").style.color = "red";
+                        document.getElementById("result").innerHTML = "Unsupported media type! (Code 415). Only PNG-files are supported for upload.";
                     }
                     else
                     {
@@ -57,7 +62,7 @@ Please enter a valid path, for example: <br>
 and select a file to upload to this path.
 
 <form method="" name="PUT form" action="" onsubmit="">
-    <input type="text" id="path">
+    <input type="text" id="path" size="40">
     <input type="file" id="fileToUpload">
 </form>
 <button type="button" onclick="uploadImage()">Upload</button>
