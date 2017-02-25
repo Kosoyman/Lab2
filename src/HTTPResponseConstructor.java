@@ -79,7 +79,7 @@ class HTTPResponseConstructor {
             boolean exists = file.exists(),
                     hidden = isHidden(),
                     isDirectory = file.isDirectory(),
-                    oversized = file.length() > 2000000,//
+                    oversized = file.length() > 2000000 ,
                     lengthy = inputDir.length() > 100,
                     unsupported = extension == null,
                     illegal = getPath().equals("http\\resources\\dir2\\TheAnswer.txt");
@@ -87,7 +87,10 @@ class HTTPResponseConstructor {
             if (oversized)
                 statusCode = tooLarge;
 
-            else if (!exists)
+            else if (lengthy)
+                statusCode = tooLong;
+
+            else if(!exists)
                 statusCode = notFound;
 
             else if(hidden)
@@ -109,11 +112,7 @@ class HTTPResponseConstructor {
                 }
                 else
                     statusCode = notFound;
-
             }
-
-            else if(lengthy)
-                statusCode = tooLong;
 
             else if(unsupported)
                 statusCode = wrongMedia;
@@ -129,7 +128,7 @@ class HTTPResponseConstructor {
             statusCode = serverErr;
 
         } catch (NullPointerException n) {
-            statusCode = forbidden;
+            statusCode = serverErr;
         }
     }
 

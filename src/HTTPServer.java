@@ -173,7 +173,6 @@ class ClientConnectionThread implements Runnable
                     }
                 }
 
-
                 filename = filename.split("\\.")[1];
 
                 //check if the file to be uploaded is png
@@ -192,7 +191,18 @@ class ClientConnectionThread implements Runnable
                         // Remove first / so path is correct
                         destinationFilePath = requestScanner.nextLine().split(" ")[1].substring(1);
 
-                        if (!destinationFilePath.contains("secretDir")) {
+                        if (destinationFilePath.contains("secretDir")){
+                            destinationFilePath = "secretDir";
+                            verdict = "403 Forbidden";
+                        }
+
+
+                        else if (destinationFilePath.contains("readOnly")) {
+                            destinationFilePath = "readOnly";
+                            verdict = "405 Method Not Allowed";
+                        }
+
+                        else {
 
                             // Make sure file could be uploaded correctly
                             if (uploadImage(req, destinationFilePath))
@@ -205,11 +215,7 @@ class ClientConnectionThread implements Runnable
                                 destinationFilePath = "uploads/StatusPages/403.html";
                                 verdict = "403 Forbidden";
                             }
-
                         }
-
-                        else
-                            destinationFilePath = "secretDir";
                     }
                 }
 
