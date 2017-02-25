@@ -21,11 +21,24 @@
 
                     // Check status code to determine if transfer was successful or not
                     if (this.status == 201) {
-                        document.getElementById("result").innerHTML = "File uploaded successfully!";
+                        document.getElementById("result").style.color = "green";
+                        document.getElementById("result").innerHTML = "File uploaded successfully! (Code 201)";
                     }
-                    else {
-                        document.getElementById("result").innerHTML = "Error! Please check the specified path and try again!";
+                    else if (this.status == 415) {
+                        document.getElementById("result").style.color = "red";
+                        document.getElementById("result").innerHTML = "Unsupported media type! (Code 415) Only PNG-files are supported for upload.";
                     }
+                    else if (this.status == 403)
+                    {
+                        document.getElementById("result").style.color = "red";
+                        document.getElementById("result").innerHTML = "Error! (Code 403 Forbidden). Make sure you've provided a valid path and try again.";
+                    }
+                    else
+                    {
+                        document.getElementById("result").style.color = "red";
+                        document.getElementById("result").innerHTML = "Error! Something went wrong. Please try again.";
+                    }
+
                 }
             };
 
